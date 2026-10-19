@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, qa, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout API
+        uses: actions/checkout@v4
+
+      - name: Checkout official notifications DB migrations
+        uses: actions/checkout@v4
+        with:
+          repository: code-corhuila/telemed-ia-notifications-db
+          ref: 7b5a4eaaa20a331bfebeb03570bc7bb35d664b3d
+          path: .e2e/notifications-db
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and test against official DB schema
+        env:
+          NOTIFICATIONS_DB_MIGRATIONS_DIR: ${{ github.workspace }}/.e2e/notifications-db
+        run: mvn -B verify

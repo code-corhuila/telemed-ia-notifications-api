@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+logging:
+  structured:
+    format:
+      # JSON logs with the traceId from the MDC (NORMA 5.3).
+      console: ecs
+  level:
+    root: INFO
+    com.telemed.notifications: INFO

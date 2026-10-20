@@ -19,6 +19,15 @@ services:
       DB_USERNAME: ${DB_USERNAME:-notifications_app}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
 
+      # SMTP relay used for patient e-mails.
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM}
+
     networks:
       - platform
 

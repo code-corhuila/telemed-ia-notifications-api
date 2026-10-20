@@ -67,6 +67,15 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
   stack traces are never exposed.
 - The `prod` profile writes JSON logs (ECS format).
 
+## E-mail
+
+- Plain-text e-mails in Spanish over SMTP (`MAIL_*` variables, see `.env.example`). In `dev` the
+  default is a local catcher on `localhost:1025`; `prod` requires `MAIL_HOST` and `MAIL_FROM` and
+  uses STARTTLS with authentication.
+- The recipient address and the reset link are used only while sending: they are not stored and
+  not logged. A failed delivery is recorded as `FAILED` and retried through broker redelivery.
+- The mail health indicator is disabled so an SMTP outage does not mark the service as down.
+
 ## User story scope
 
 - **HU-03** — deliver the password recovery e-mail from `PasswordRecoveryRequested` (in progress).

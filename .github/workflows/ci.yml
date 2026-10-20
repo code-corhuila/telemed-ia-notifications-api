@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: code-corhuila/telemed-ia-notifications-db
-          ref: 7b5a4eaaa20a331bfebeb03570bc7bb35d664b3d
+          ref: df29c7f65798b40720da451d01e1729005c6be7f
           path: .e2e/notifications-db
           persist-credentials: false
 

@@ -1,9 +1,85 @@
 # telemed-ia-notifications-api
 
-> notifications bounded context: service API
+> Notifications bounded context: e-mail delivery triggered by domain events.
 
-Part of the **LMS Library** distributed system — team `lms-library`, Grupo 2.
-Governance and documentation live in [`library-docs`](https://github.com/code-corhuila/library-docs).
+Part of **TeleMed IA**, Grupo 2. Governance and documentation live in `telemed-ia-docs`
+(`09-microservices/services/08-notification-service/`).
+
+## Modules
+
+| Module | Content |
+|---|---|
+| `notifications-core` | Domain and application layer. No framework dependencies. |
+| `notifications-adapters` | HTTP (correlation id, error envelope), persistence and, later, e-mail and messaging adapters. |
+| `notifications-app` | Spring Boot composition root, configuration and E2E tests. |
+
+Hexagonal architecture, same layout as `telemed-ia-identity-and-access-api`.
+
+## Technology baseline
+
+Java 21, Spring Boot 3.5.16, Maven multimodule, PostgreSQL 16.
+
+## Database
+
+- Schema `notifications` in the shared instance of `telemed-ia-infra-postgres`, owned by
+  `telemed-ia-notifications-db`.
+- The API connects as `notifications_app` (its `search_path` is `notifications`), **never runs
+  migrations** (`spring.liquibase.enabled=false`) and validates the mapped tables
+  (`ddl-auto=validate`).
+
+## Running locally
+
+```bash
+cp .env.example .env              # set DB_PASSWORD
+mvn -B package -Dtest='!*E2ETest' -Dsurefire.failIfNoSpecifiedTests=false
+java -jar notifications-app/target/notifications-app.jar
+curl http://localhost:9082/actuator/health
+```
+
+With Docker, on the `platform` network created by `telemed-ia-infra-postgres`:
+
+```bash
+docker compose --env-file .env -f deploy/compose.yml up -d --build
+```
+
+| Port | Use |
+|---|---|
+| 8082 | API |
+| 9082 | Management (`/actuator/health`), bound to `127.0.0.1` in Compose |
+
+## Verification
+
+The E2E suite starts PostgreSQL with Testcontainers, reproduces the infra bootstrap of the
+notifications domain and applies the real migrations of `telemed-ia-notifications-db` as
+`notifications_app`:
+
+```bash
+NOTIFICATIONS_DB_MIGRATIONS_DIR=/path/to/telemed-ia-notifications-db mvn -B verify
+```
+
+CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same command.
+
+## Error handling and correlation
+
+- `X-Correlation-Id` is reused when it matches `[A-Za-z0-9._-]{1,128}`, generated otherwise,
+  returned in the response and logged as `traceId`.
+- Errors use the common envelope `{error, message, details, traceId}`; driver messages and
+  stack traces are never exposed.
+- The `prod` profile writes JSON logs (ECS format).
+
+## E-mail
+
+- Plain-text e-mails in Spanish over SMTP (`MAIL_*` variables, see `.env.example`). In `dev` the
+  default is a local catcher on `localhost:1025`; `prod` requires `MAIL_HOST` and `MAIL_FROM` and
+  uses STARTTLS with authentication.
+- The recipient address and the reset link are used only while sending: they are not stored and
+  not logged. A failed delivery is recorded as `FAILED` and retried through broker redelivery.
+- The mail health indicator is disabled so an SMTP outage does not mark the service as down.
+
+## User story scope
+
+- **HU-03** — deliver the password recovery e-mail from `PasswordRecoveryRequested` (in progress).
+- **HU-17 / HU-18** — appointment notifications and reminders (not started).
 
 ## Branching
 

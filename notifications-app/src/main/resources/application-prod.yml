@@ -1,0 +1,31 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  # No localhost fallback outside dev; TLS is mandatory unless disabled.
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.starttls.required: ${MAIL_SMTP_STARTTLS:true}
+
+notifications:
+  mail:
+    from: ${MAIL_FROM}
+
+logging:
+  structured:
+    format:
+      # JSON logs with the traceId from the MDC (NORMA 5.3).
+      console: ecs
+  level:
+    root: INFO
+    com.telemed.notifications: INFO

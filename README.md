@@ -76,6 +76,17 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
   not logged. A failed delivery is recorded as `FAILED` and retried through broker redelivery.
 - The mail health indicator is disabled so an SMTP outage does not mark the service as down.
 
+## Messaging
+
+- Consumes `PasswordRecoveryRequested` (ADR-011 envelope) from the RabbitMQ topic exchange
+  `identity.events`, routing key `password-recovery-requested`, through the queue it owns,
+  `notifications.password-recovery-requested`. A repeated event id sends no second e-mail.
+- An SMTP failure is retried 3 times with backoff; then, like a message that can never be delivered
+  (malformed, another type or version), it goes to `notifications.password-recovery-requested.dlq`.
+  Dead-lettered messages expire after 30 minutes, the lifetime of the reset link they carry.
+- The listener runs only with `NOTIFICATIONS_LISTENER_ENABLED=true` (`RABBITMQ_*` variables, see
+  `.env.example`); Docker Compose turns it on. The RabbitMQ health indicator is disabled.
+
 ## User story scope
 
 - **HU-03** — deliver the password recovery e-mail from `PasswordRecoveryRequested` (in progress).

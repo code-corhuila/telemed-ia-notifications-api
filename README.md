@@ -67,6 +67,16 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
   stack traces are never exposed.
 - The `prod` profile writes JSON logs (ECS format).
 
+## Authentication
+
+- Every `/api/v1` request needs `Authorization: Bearer <access token>` issued by identity. The token
+  is verified here (NORMA): RS256 only, identity's public key, issuer, expiry, `jti`, a user UUID in
+  `sub` and a `role`. Service tokens are not accepted.
+- Any failure answers `401` with `WWW-Authenticate: Bearer` and the common envelope (`UNAUTHORIZED`),
+  without saying why. Actuator, on the management port, is not affected.
+- `JWT_PUBLIC_KEY` (escaped PEM) or `JWT_PUBLIC_KEY_FILE`; Docker Compose mounts
+  `JWT_PUBLIC_KEY_HOST_FILE`. The service does not start without the key.
+
 ## E-mail
 
 - Plain-text e-mails in Spanish over SMTP (`MAIL_*` variables, see `.env.example`). In `dev` the
@@ -90,7 +100,7 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
 ## User story scope
 
 - **HU-03** — deliver the password recovery e-mail from `PasswordRecoveryRequested` (in progress).
-- **HU-17 / HU-18** — appointment notifications and reminders (not started).
+- **HU-17 / HU-18** — appointment notifications, reminders and the notifications inbox (in progress).
 
 ## Branching
 

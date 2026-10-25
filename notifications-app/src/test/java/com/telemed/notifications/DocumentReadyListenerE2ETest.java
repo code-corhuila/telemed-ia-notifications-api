@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.profiles.active=dev",
                 "notifications.messaging.enabled=true",
+                "notifications.identity.client-secret=e2e-identity-client-secret",
                 "spring.rabbitmq.listener.simple.retry.initial-interval=100ms"
         }
 )

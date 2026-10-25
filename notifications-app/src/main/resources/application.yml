@@ -54,6 +54,14 @@ spring:
           multiplier: 2.0
           max-interval: 30s
 
+# Access tokens from identity (RS256), verified here with identity's public
+# key. There is no default key: the service does not start without one.
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:telemed-ia-identity-and-access}
+    public-key: ${JWT_PUBLIC_KEY:}
+    public-key-file: ${JWT_PUBLIC_KEY_FILE:}
+
 notifications:
   # Off unless turned on, so tests and local tools never take real events.
   messaging:

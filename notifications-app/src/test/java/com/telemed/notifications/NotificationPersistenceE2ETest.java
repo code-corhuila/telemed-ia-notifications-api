@@ -1,9 +1,11 @@
 package com.telemed.notifications;
 
 import com.telemed.notifications.application.port.out.NotificationRepositoryPort;
+import com.telemed.notifications.domain.model.InboxNotification;
 import com.telemed.notifications.domain.model.Notification;
 import com.telemed.notifications.domain.model.NotificationStatus;
 import com.telemed.notifications.domain.model.NotificationType;
+import com.telemed.notifications.domain.model.SubjectType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -48,11 +50,12 @@ class NotificationPersistenceE2ETest {
     @Test
     void shouldInsertPendingAndUpdateItToSentOnTheSameRow() {
         UUID eventId = UUID.randomUUID();
+        UUID recipient = UUID.randomUUID();
         String correlationId = "c".repeat(128);
 
         Notification pending = notifications.save(
                 Notification.pending(
-                        UUID.randomUUID(),
+                        recipient,
                         NotificationType.PASSWORD_RECOVERY,
                         eventId,
                         correlationId
@@ -66,7 +69,7 @@ class NotificationPersistenceE2ETest {
         notifications.save(pending.sent(sentAt));
 
         Notification stored =
-                notifications.findBySourceEventId(eventId).orElseThrow();
+                notifications.findBySourceEventIdAndRecipient(eventId, recipient).orElseThrow();
 
         assertThat(stored.id()).isEqualTo(pending.id());
         assertThat(stored.status()).isEqualTo(NotificationStatus.SENT);
@@ -87,18 +90,42 @@ class NotificationPersistenceE2ETest {
     }
 
     @Test
-    void shouldAcceptOneEventForSeveralRecipients() {
+    void shouldAcceptOneEventForSeveralRecipientsAndFindEachOne() {
         UUID eventId = UUID.randomUUID();
+        UUID patient = UUID.randomUUID();
+        UUID professional = UUID.randomUUID();
 
         // HU-17: one appointment event notifies both the patient and the professional.
-        notifications.save(pending(eventId, UUID.randomUUID()));
+        Notification forPatient = notifications.save(pending(eventId, patient));
+        Notification forProfessional = notifications.save(pending(eventId, professional));
 
-        assertThat(notifications.save(pending(eventId, UUID.randomUUID())).id()).isNotNull();
+        assertThat(notifications.findBySourceEventIdAndRecipient(eventId, patient))
+                .get().extracting(Notification::id).isEqualTo(forPatient.id());
+        assertThat(notifications.findBySourceEventIdAndRecipient(eventId, professional))
+                .get().extracting(Notification::id).isEqualTo(forProfessional.id());
+    }
+
+    @Test
+    void shouldKeepTheSubjectWhenTheDeliveryIsUpdated() {
+        UUID eventId = UUID.randomUUID();
+        UUID patient = UUID.randomUUID();
+        InboxNotification.Subject appointment = new InboxNotification.Subject(
+                SubjectType.APPOINTMENT, UUID.randomUUID(), Instant.parse("2026-11-03T14:00:00Z"));
+
+        Notification pending = notifications.save(Notification.pending(
+                patient, NotificationType.APPOINTMENT_CONFIRMED, eventId, null, appointment));
+        notifications.save(pending.sent(Instant.now().truncatedTo(ChronoUnit.MICROS)));
+
+        assertThat(notifications.findBySourceEventIdAndRecipient(eventId, patient))
+                .get().satisfies(stored -> {
+                    assertThat(stored.status()).isEqualTo(NotificationStatus.SENT);
+                    assertThat(stored.subject()).isEqualTo(appointment);
+                });
     }
 
     @Test
     void shouldReturnEmptyForUnknownEvent() {
-        assertThat(notifications.findBySourceEventId(UUID.randomUUID()))
+        assertThat(notifications.findBySourceEventIdAndRecipient(UUID.randomUUID(), UUID.randomUUID()))
                 .isEmpty();
     }
 

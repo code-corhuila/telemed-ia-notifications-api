@@ -37,10 +37,10 @@ public class DeliverPasswordRecoveryEmailService
             DeliverPasswordRecoveryEmailCommand command
     ) {
 
-        // Recording PENDING first lets the unique source_event_id reject a
-        // concurrent redelivery of the same event before a second e-mail.
+        // Recording PENDING first lets the unique (source event, recipient) reject
+        // a concurrent redelivery of the same event before a second e-mail.
         Notification notification =
-                notifications.findBySourceEventId(command.eventId())
+                notifications.findBySourceEventIdAndRecipient(command.eventId(), command.userId())
                         .orElseGet(() -> notifications.save(
                                 Notification.pending(
                                         command.userId(),

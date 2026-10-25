@@ -104,6 +104,9 @@ Always the inbox of the access token's user; password recovery is never listed.
 - An SMTP failure is retried 3 times with backoff; then, like a message that can never be delivered
   (malformed, another type or version), it goes to `notifications.password-recovery-requested.dlq`.
   Dead-lettered messages expire after 30 minutes, the lifetime of the reset link they carry.
+- Consumes `ConsultationPdfGenerated` from `documents.events` (routing key
+  `consultation-pdf-generated`, queue `notifications.consultation-pdf-generated` and its `.dlq`):
+  the patient gets `DOCUMENT_READY` in the inbox only (channel `IN_APP`), once per event.
 - The listener runs only with `NOTIFICATIONS_LISTENER_ENABLED=true` (`RABBITMQ_*` variables, see
   `.env.example`); Docker Compose turns it on. The RabbitMQ health indicator is disabled.
 

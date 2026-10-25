@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -59,6 +60,9 @@ class NotificationsApplicationE2ETest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     void shouldReportHealthyWithDatabaseAsNotificationsApp()
@@ -122,5 +126,46 @@ class NotificationsApplicationE2ETest {
         JsonNode body = objectMapper.readTree(response.getBody());
         assertThat(body.get("error").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(body.get("traceId").asText()).isEqualTo("e2e-trace-2");
+    }
+
+    @Test
+    void shouldServeAndMarkTheCallersInbox()
+            throws Exception {
+        UUID user = UUID.randomUUID();
+        UUID reminder = insertNotification(user, "APPOINTMENT_REMINDER");
+        insertNotification(user, "PASSWORD_RECOVERY");
+        insertNotification(UUID.randomUUID(), "APPOINTMENT_REMINDER");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(TestAccessTokens.accessToken(user, "PATIENT"));
+
+        JsonNode inbox = objectMapper.readTree(http.exchange(
+                "http://localhost:" + port + "/api/v1/notifications",
+                HttpMethod.GET, new HttpEntity<>(headers), String.class).getBody());
+
+        assertThat(inbox.get("data")).hasSize(1);
+        assertThat(inbox.get("data").get(0).get("id").asText()).isEqualTo(reminder.toString());
+        assertThat(inbox.get("meta").get("total").asLong()).isEqualTo(1);
+        assertThat(unreadCount(headers)).isEqualTo(1);
+
+        ResponseEntity<String> read = http.exchange(
+                "http://localhost:" + port + "/api/v1/notifications/" + reminder + "/read",
+                HttpMethod.PUT, new HttpEntity<>(headers), String.class);
+
+        assertThat(read.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(unreadCount(headers)).isZero();
+    }
+
+    private long unreadCount(HttpHeaders headers) throws Exception {
+        return objectMapper.readTree(http.exchange(
+                "http://localhost:" + port + "/api/v1/notifications/unread-count",
+                HttpMethod.GET, new HttpEntity<>(headers), String.class).getBody())
+                .get("unreadCount").asLong();
+    }
+
+    private UUID insertNotification(UUID recipient, String type) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO notifications.notification (id, recipient_user_id, type, source_event_id)"
+                + " VALUES (?, ?, ?, ?)", id, recipient, type, UUID.randomUUID());
+        return id;
     }
 }

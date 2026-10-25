@@ -77,6 +77,16 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
 - `JWT_PUBLIC_KEY` (escaped PEM) or `JWT_PUBLIC_KEY_FILE`; Docker Compose mounts
   `JWT_PUBLIC_KEY_HOST_FILE`. The service does not start without the key.
 
+## Inbox API (HU-17)
+
+Always the inbox of the access token's user; password recovery is never listed.
+
+- `GET /api/v1/notifications?unread=true&type=APPOINTMENT_REMINDER&page=1&limit=20` returns `{data, meta}`:
+  each item has `id`, `type`, `subject` (`{type, id, at}` or `null`), `read`, `readAt`, `createdAt`.
+- `GET /api/v1/notifications/unread-count` returns `{unreadCount}`.
+- `PUT /api/v1/notifications/{id}/read` and `PUT /api/v1/notifications/read-all` answer `204`.
+  Another user's notification answers `404`, like a missing one.
+
 ## E-mail
 
 - Plain-text e-mails in Spanish over SMTP (`MAIL_*` variables, see `.env.example`). In `dev` the

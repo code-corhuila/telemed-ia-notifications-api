@@ -87,6 +87,16 @@ Always the inbox of the access token's user; password recovery is never listed.
 - `PUT /api/v1/notifications/{id}/read` and `PUT /api/v1/notifications/read-all` answer `204`.
   Another user's notification answers `404`, like a missing one.
 
+## Identity client (HU-17)
+
+- The patient's e-mail is asked to identity, `GET /internal/notification-recipients/{id}` (active patients
+  only; any other account answers nothing), only while an e-mail is sent: it is never stored.
+- Notifications authenticates as its own service client (`IDENTITY_CLIENT_ID`, default `notifications`, and
+  `IDENTITY_CLIENT_SECRET`) at `POST /internal/service-token`; identity's `SERVICE_CLIENTS` keeps the bcrypt
+  hash. The token is reused until 30 seconds before it expires, and renewed once if identity rejects it.
+- Every call is limited by `IDENTITY_TIMEOUT` (default 3 s). If identity cannot answer, the event is retried through
+  the broker. The secret is required only where the event consumers run (`NOTIFICATIONS_LISTENER_ENABLED`).
+
 ## E-mail
 
 - Plain-text e-mails in Spanish over SMTP (`MAIL_*` variables, see `.env.example`). In `dev` the

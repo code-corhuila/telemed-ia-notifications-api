@@ -23,11 +23,12 @@ public class NotificationPersistenceAdapter
     }
 
     @Override
-    public Optional<Notification> findBySourceEventId(
-            UUID sourceEventId
+    public Optional<Notification> findBySourceEventIdAndRecipient(
+            UUID sourceEventId,
+            UUID recipientUserId
     ) {
         try {
-            return notifications.findBySourceEventId(sourceEventId)
+            return notifications.findBySourceEventIdAndRecipientUserId(sourceEventId, recipientUserId)
                     .map(NotificationJpaEntity::toDomain);
 
         } catch (DataAccessException exception) {

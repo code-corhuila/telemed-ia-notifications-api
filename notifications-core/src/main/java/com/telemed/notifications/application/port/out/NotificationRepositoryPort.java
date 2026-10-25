@@ -7,8 +7,10 @@ import java.util.UUID;
 
 public interface NotificationRepositoryPort {
 
-    Optional<Notification> findBySourceEventId(
-            UUID sourceEventId
+    /** One event may notify several recipients, each with its own record. */
+    Optional<Notification> findBySourceEventIdAndRecipient(
+            UUID sourceEventId,
+            UUID recipientUserId
     );
 
     Notification save(

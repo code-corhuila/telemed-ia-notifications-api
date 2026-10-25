@@ -4,10 +4,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Delivery record of one consumed event.
+ * Delivery record of one consumed event for one recipient.
  *
  * <p>It never holds the recipient address, the message body or the reset
  * link: those travel in the event and are used only while sending.
+ *
+ * @param subject what it is about, shown in the inbox; null for password recovery
  */
 public record Notification(
         UUID id,
@@ -18,7 +20,8 @@ public record Notification(
         String lastError,
         UUID sourceEventId,
         String correlationId,
-        Instant sentAt
+        Instant sentAt,
+        InboxNotification.Subject subject
 ) {
 
     public Notification {
@@ -52,6 +55,12 @@ public record Notification(
                     "A sent notification requires its sending time."
             );
         }
+
+        if (subject != null && (subject.type() == null || subject.id() == null)) {
+            throw new IllegalArgumentException(
+                    "A notification subject needs its type and id."
+            );
+        }
     }
 
     public static Notification pending(
@@ -59,6 +68,16 @@ public record Notification(
             NotificationType type,
             UUID sourceEventId,
             String correlationId
+    ) {
+        return pending(recipientUserId, type, sourceEventId, correlationId, null);
+    }
+
+    public static Notification pending(
+            UUID recipientUserId,
+            NotificationType type,
+            UUID sourceEventId,
+            String correlationId,
+            InboxNotification.Subject subject
     ) {
         return new Notification(
                 null,
@@ -69,7 +88,8 @@ public record Notification(
                 null,
                 sourceEventId,
                 correlationId,
-                null
+                null,
+                subject
         );
     }
 
@@ -113,7 +133,8 @@ public record Notification(
                 newLastError,
                 sourceEventId,
                 correlationId,
-                newSentAt
+                newSentAt,
+                subject
         );
     }
 }

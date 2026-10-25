@@ -16,8 +16,9 @@ import java.util.UUID;
 public interface SpringDataNotificationRepository
         extends JpaRepository<NotificationJpaEntity, UUID> {
 
-    Optional<NotificationJpaEntity> findBySourceEventId(
-            UUID sourceEventId
+    Optional<NotificationJpaEntity> findBySourceEventIdAndRecipientUserId(
+            UUID sourceEventId,
+            UUID recipientUserId
     );
 
     @Query("""

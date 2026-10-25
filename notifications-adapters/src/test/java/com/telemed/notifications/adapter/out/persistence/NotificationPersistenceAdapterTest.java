@@ -1,7 +1,9 @@
 package com.telemed.notifications.adapter.out.persistence;
 
+import com.telemed.notifications.domain.model.InboxNotification;
 import com.telemed.notifications.domain.model.Notification;
 import com.telemed.notifications.domain.model.NotificationType;
+import com.telemed.notifications.domain.model.SubjectType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -77,6 +79,28 @@ class NotificationPersistenceAdapterTest {
                 .isEqualTo(OffsetDateTime.ofInstant(SENT_AT, ZoneOffset.UTC));
 
         assertThat(result).isEqualTo(sent);
+    }
+
+    @Test
+    void shouldWriteTheSubjectOfAnAppointmentNotification() {
+        when(repository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        UUID appointmentId = UUID.fromString("55555555-5555-4555-8555-555555555555");
+
+        adapter.save(Notification.pending(
+                USER_ID,
+                NotificationType.APPOINTMENT_CONFIRMED,
+                EVENT_ID,
+                null,
+                new InboxNotification.Subject(SubjectType.APPOINTMENT, appointmentId, SENT_AT)
+        ));
+
+        ArgumentCaptor<NotificationJpaEntity> captor =
+                ArgumentCaptor.forClass(NotificationJpaEntity.class);
+        verify(repository).saveAndFlush(captor.capture());
+
+        assertThat(captor.getValue().toDomain().subject())
+                .isEqualTo(new InboxNotification.Subject(SubjectType.APPOINTMENT, appointmentId, SENT_AT));
     }
 
     @Test

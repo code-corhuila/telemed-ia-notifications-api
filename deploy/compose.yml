@@ -1,0 +1,37 @@
+services:
+  notifications-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+
+    ports:
+      - "${PORT:-8082}:8082"
+      - "127.0.0.1:${MANAGEMENT_PORT:-9082}:9082"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8082
+      MANAGEMENT_PORT: 9082
+
+      # Shared instance from telemed-ia-infra-postgres, reached over the
+      # platform network, with the domain's own user.
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/telemed_ia}
+      DB_USERNAME: ${DB_USERNAME:-notifications_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+
+      # SMTP relay used for patient e-mails.
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM}
+
+    networks:
+      - platform
+
+networks:
+  platform:
+    external: true
+    name: platform

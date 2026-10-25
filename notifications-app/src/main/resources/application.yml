@@ -63,3 +63,7 @@ management:
     # deliveries are recorded and retried through broker redelivery.
     mail:
       enabled: false
+    # Same for the broker: the listener reconnects on its own and the events
+    # wait in their durable queue meanwhile.
+    rabbit:
+      enabled: false

@@ -51,6 +51,7 @@ class PasswordRecoveryDeliveryE2ETest {
                 () -> OfficialDatabaseSchemaInitializer.APP_USER);
         registry.add("spring.datasource.password",
                 () -> OfficialDatabaseSchemaInitializer.APP_PASSWORD);
+        registry.add("security.jwt.public-key", TestAccessTokens::publicKeyPem);
         registry.add("spring.mail.host", () -> "localhost");
         registry.add("spring.mail.port", ServerSetupTest.SMTP::getPort);
         registry.add("notifications.mail.from", () -> "no-reply@telemed.test");

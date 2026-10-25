@@ -63,6 +63,7 @@ class PasswordRecoveryListenerE2ETest {
                 () -> OfficialDatabaseSchemaInitializer.APP_USER);
         registry.add("spring.datasource.password",
                 () -> OfficialDatabaseSchemaInitializer.APP_PASSWORD);
+        registry.add("security.jwt.public-key", TestAccessTokens::publicKeyPem);
         registry.add("spring.rabbitmq.host", RABBITMQ::getHost);
         registry.add("spring.rabbitmq.port", RABBITMQ::getAmqpPort);
         registry.add("spring.rabbitmq.username", RABBITMQ::getAdminUsername);

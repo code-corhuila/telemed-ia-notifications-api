@@ -13,6 +13,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -80,16 +81,20 @@ class PasswordRecoveryListenerE2ETest {
     @Autowired
     private NotificationRepositoryPort notifications;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     @Test
     void shouldSendOneEmailEvenIfIdentityPublishesTheEventTwice() throws Exception {
 
         UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         String resetUrl = "https://portal.e2e.test/reset-password#token=" + eventId;
 
-        publish(eventId, envelope(eventId, resetUrl));
-        publish(eventId, envelope(eventId, resetUrl));
+        publish(eventId, envelope(eventId, userId, resetUrl));
+        publish(eventId, envelope(eventId, userId, resetUrl));
 
-        Notification sent = awaitNotification(eventId, NotificationStatus.SENT);
+        Notification sent = awaitNotification(eventId, userId, NotificationStatus.SENT);
         assertThat(sent.attemptCount()).isEqualTo(1);
 
         // The second copy is consumed after the first; give it time to (not) send.
@@ -110,7 +115,9 @@ class PasswordRecoveryListenerE2ETest {
 
         assertThat(deadLettered).isNotNull();
         assertThat(deadLettered.getMessageProperties().getMessageId()).isEqualTo(eventId.toString());
-        assertThat(notifications.findBySourceEventId(eventId)).isEmpty();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notifications.notification WHERE source_event_id = ?", Integer.class, eventId))
+                .isZero();
     }
 
     private void publish(UUID eventId, String body) {
@@ -120,9 +127,10 @@ class PasswordRecoveryListenerE2ETest {
         rabbit.send(EXCHANGE, ROUTING_KEY, new Message(body.getBytes(StandardCharsets.UTF_8), properties));
     }
 
-    private Notification awaitNotification(UUID eventId, NotificationStatus status) throws InterruptedException {
+    private Notification awaitNotification(UUID eventId, UUID userId, NotificationStatus status)
+            throws InterruptedException {
         for (int attempt = 0; attempt < 150; attempt++) {
-            Optional<Notification> notification = notifications.findBySourceEventId(eventId)
+            Optional<Notification> notification = notifications.findBySourceEventIdAndRecipient(eventId, userId)
                     .filter(found -> found.status() == status);
             if (notification.isPresent()) {
                 return notification.get();
@@ -132,7 +140,7 @@ class PasswordRecoveryListenerE2ETest {
         throw new AssertionError("No " + status + " notification for event " + eventId + ".");
     }
 
-    private static String envelope(UUID eventId, String resetUrl) {
+    private static String envelope(UUID eventId, UUID userId, String resetUrl) {
         return """
                 {
                   "eventId": "%s",
@@ -148,7 +156,7 @@ class PasswordRecoveryListenerE2ETest {
                     "resetUrl": "%s"
                   }
                 }
-                """.formatted(eventId, Instant.now(), UUID.randomUUID(), UUID.randomUUID(),
+                """.formatted(eventId, Instant.now(), userId, UUID.randomUUID(),
                 Instant.now().plus(Duration.ofMinutes(30)), resetUrl);
     }
 }

@@ -33,8 +33,32 @@ spring:
       mail.smtp.connectiontimeout: ${MAIL_CONNECTION_TIMEOUT_MS:5000}
       mail.smtp.timeout: ${MAIL_TIMEOUT_MS:5000}
       mail.smtp.writetimeout: ${MAIL_WRITE_TIMEOUT_MS:5000}
+  # HU-03: PasswordRecoveryRequested from identity. A failed delivery is
+  # retried here, then rejected without requeue to the dead-letter queue.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:5s}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        prefetch: ${RABBITMQ_PREFETCH:10}
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: ${RABBITMQ_RETRY_INITIAL_INTERVAL:2s}
+          multiplier: 2.0
+          max-interval: 30s
 
 notifications:
+  # Off unless turned on, so tests and local tools never take real events.
+  messaging:
+    enabled: ${NOTIFICATIONS_LISTENER_ENABLED:false}
+    dead-letter-ttl: PT30M
   mail:
     from: ${MAIL_FROM:no-reply@telemed.local}
     time-zone: ${MAIL_TIME_ZONE:America/Bogota}

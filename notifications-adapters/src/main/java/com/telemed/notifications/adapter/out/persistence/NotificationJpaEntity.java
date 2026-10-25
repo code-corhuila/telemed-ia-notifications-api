@@ -91,9 +91,12 @@ public class NotificationJpaEntity {
         entity.lastError = notification.lastError();
         entity.sourceEventId = notification.sourceEventId();
         entity.correlationId = notification.correlationId();
-        entity.sentAt = notification.sentAt() == null
-                ? null
-                : OffsetDateTime.ofInstant(notification.sentAt(), ZoneOffset.UTC);
+        entity.sentAt = offsetDateTime(notification.sentAt());
+        if (notification.subject() != null) {
+            entity.subjectType = notification.subject().type();
+            entity.subjectId = notification.subject().id();
+            entity.subjectAt = offsetDateTime(notification.subject().at());
+        }
         return entity;
     }
 
@@ -107,7 +110,8 @@ public class NotificationJpaEntity {
                 lastError,
                 sourceEventId,
                 correlationId,
-                sentAt == null ? null : sentAt.toInstant()
+                instant(sentAt),
+                subject()
         );
     }
 
@@ -115,16 +119,24 @@ public class NotificationJpaEntity {
         return new InboxNotification(
                 id,
                 type,
-                subjectType == null
-                        ? null
-                        : new InboxNotification.Subject(subjectType, subjectId, instant(subjectAt)),
+                subject(),
                 instant(readAt),
                 instant(createdAt)
         );
     }
 
+    private InboxNotification.Subject subject() {
+        return subjectType == null
+                ? null
+                : new InboxNotification.Subject(subjectType, subjectId, instant(subjectAt));
+    }
+
     private static Instant instant(OffsetDateTime value) {
         return value == null ? null : value.toInstant();
+    }
+
+    private static OffsetDateTime offsetDateTime(Instant value) {
+        return value == null ? null : OffsetDateTime.ofInstant(value, ZoneOffset.UTC);
     }
 
     public UUID getId() {

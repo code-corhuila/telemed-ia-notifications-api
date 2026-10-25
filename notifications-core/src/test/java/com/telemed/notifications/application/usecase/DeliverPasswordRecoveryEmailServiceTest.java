@@ -77,7 +77,7 @@ class DeliverPasswordRecoveryEmailServiceTest {
 
     @Test
     void shouldRecordPendingNotificationBeforeSendingAndMarkItSent() {
-        when(notifications.findBySourceEventId(EVENT_ID))
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, USER_ID))
                 .thenReturn(Optional.empty());
         when(notifications.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -108,7 +108,7 @@ class DeliverPasswordRecoveryEmailServiceTest {
 
     @Test
     void shouldIgnoreEventAlreadySent() {
-        when(notifications.findBySourceEventId(EVENT_ID))
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, USER_ID))
                 .thenReturn(Optional.of(
                         existing(NotificationStatus.SENT, 1, NOW)
                 ));
@@ -121,7 +121,7 @@ class DeliverPasswordRecoveryEmailServiceTest {
 
     @Test
     void shouldRetryPreviouslyFailedNotificationWithoutCreatingAnother() {
-        when(notifications.findBySourceEventId(EVENT_ID))
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, USER_ID))
                 .thenReturn(Optional.of(
                         existing(NotificationStatus.FAILED, 1, null)
                 ));
@@ -142,7 +142,7 @@ class DeliverPasswordRecoveryEmailServiceTest {
 
     @Test
     void shouldNotSendExpiredLinkAndRecordItWithoutRetrying() {
-        when(notifications.findBySourceEventId(EVENT_ID))
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, USER_ID))
                 .thenReturn(Optional.empty());
         when(notifications.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -164,7 +164,7 @@ class DeliverPasswordRecoveryEmailServiceTest {
 
     @Test
     void shouldRecordFailureWithoutPersonalDataAndRethrowForRedelivery() {
-        when(notifications.findBySourceEventId(EVENT_ID))
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, USER_ID))
                 .thenReturn(Optional.empty());
         when(notifications.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -222,7 +222,8 @@ class DeliverPasswordRecoveryEmailServiceTest {
                 status == NotificationStatus.FAILED ? "EMAIL_DELIVERY_FAILED" : null,
                 EVENT_ID,
                 CORRELATION_ID,
-                sentAt
+                sentAt,
+                null
         );
     }
 }

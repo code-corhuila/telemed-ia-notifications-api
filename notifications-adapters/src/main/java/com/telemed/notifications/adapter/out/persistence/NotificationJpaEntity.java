@@ -1,8 +1,10 @@
 package com.telemed.notifications.adapter.out.persistence;
 
+import com.telemed.notifications.domain.model.InboxNotification;
 import com.telemed.notifications.domain.model.Notification;
 import com.telemed.notifications.domain.model.NotificationStatus;
 import com.telemed.notifications.domain.model.NotificationType;
+import com.telemed.notifications.domain.model.SubjectType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -20,7 +23,8 @@ import java.util.UUID;
  * Maps notifications.notification, owned by telemed-ia-notifications-db.
  *
  * <p>channel, created_at and updated_at are left to the database defaults
- * and trigger.
+ * and trigger. read_at changes only through the inbox queries, and the
+ * subject is written once, so saving a delivery never overwrites them.
  */
 @Entity
 @Table(name = "notification", schema = "notifications")
@@ -56,6 +60,22 @@ public class NotificationJpaEntity {
     @Column(name = "sent_at")
     private OffsetDateTime sentAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subject_type", updatable = false, length = 20)
+    private SubjectType subjectType;
+
+    @Column(name = "subject_id", updatable = false)
+    private UUID subjectId;
+
+    @Column(name = "subject_at", updatable = false)
+    private OffsetDateTime subjectAt;
+
+    @Column(name = "read_at", insertable = false, updatable = false)
+    private OffsetDateTime readAt;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
     protected NotificationJpaEntity() {
     }
 
@@ -89,6 +109,22 @@ public class NotificationJpaEntity {
                 correlationId,
                 sentAt == null ? null : sentAt.toInstant()
         );
+    }
+
+    public InboxNotification toInboxNotification() {
+        return new InboxNotification(
+                id,
+                type,
+                subjectType == null
+                        ? null
+                        : new InboxNotification.Subject(subjectType, subjectId, instant(subjectAt)),
+                instant(readAt),
+                instant(createdAt)
+        );
+    }
+
+    private static Instant instant(OffsetDateTime value) {
+        return value == null ? null : value.toInstant();
     }
 
     public UUID getId() {

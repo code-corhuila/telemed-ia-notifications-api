@@ -17,6 +17,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
@@ -43,6 +45,7 @@ class NotificationsApplicationE2ETest {
                 () -> OfficialDatabaseSchemaInitializer.APP_USER);
         registry.add("spring.datasource.password",
                 () -> OfficialDatabaseSchemaInitializer.APP_PASSWORD);
+        registry.add("security.jwt.public-key", TestAccessTokens::publicKeyPem);
     }
 
     @LocalServerPort
@@ -76,6 +79,7 @@ class NotificationsApplicationE2ETest {
             throws Exception {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Correlation-Id", "e2e-trace-1");
+        headers.setBearerAuth(TestAccessTokens.accessToken(UUID.randomUUID(), "PATIENT"));
 
         ResponseEntity<String> response =
                 http.exchange(
@@ -93,5 +97,30 @@ class NotificationsApplicationE2ETest {
         assertThat(body.get("error").asText()).isEqualTo("NOT_FOUND");
         assertThat(body.get("traceId").asText()).isEqualTo("e2e-trace-1");
         assertThat(body.has("message")).isTrue();
+    }
+
+    @Test
+    void shouldRequireAnAccessTokenOnTheApi()
+            throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Correlation-Id", "e2e-trace-2");
+
+        ResponseEntity<String> response =
+                http.exchange(
+                        "http://localhost:" + port + "/api/v1/notifications",
+                        HttpMethod.GET,
+                        new HttpEntity<>(headers),
+                        String.class
+                );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getFirst("WWW-Authenticate"))
+                .isEqualTo("Bearer");
+        assertThat(response.getHeaders().getFirst("X-Correlation-Id"))
+                .isEqualTo("e2e-trace-2");
+
+        JsonNode body = objectMapper.readTree(response.getBody());
+        assertThat(body.get("error").asText()).isEqualTo("UNAUTHORIZED");
+        assertThat(body.get("traceId").asText()).isEqualTo("e2e-trace-2");
     }
 }

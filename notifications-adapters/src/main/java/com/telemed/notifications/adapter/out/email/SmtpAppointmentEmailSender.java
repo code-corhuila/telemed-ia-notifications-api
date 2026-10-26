@@ -60,7 +60,12 @@ public class SmtpAppointmentEmailSender implements AppointmentEmailSenderPort {
                 message.setText(body("Tu cita del " + time(startsAt) + " fue cancelada.\n\n"
                         + "Si aún necesitas atención, puedes agendar una nueva cita en TeleMed IA."));
             }
-            default -> throw new IllegalArgumentException("Not an appointment change: " + change + ".");
+            case APPOINTMENT_REMINDER -> {
+                message.setSubject("Recordatorio de tu cita en TeleMed IA");
+                message.setText(body("Te recordamos tu cita del " + time(startsAt) + ".\n\n"
+                        + "Si no puedes asistir, cancélala o reprográmala en TeleMed IA."));
+            }
+            default -> throw new IllegalArgumentException("Not an appointment notice: " + change + ".");
         }
 
         try {

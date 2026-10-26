@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -119,5 +120,28 @@ class NotificationPersistenceAdapterTest {
         assertThatThrownBy(() -> adapter.save(pending))
                 .isInstanceOf(IllegalStateException.class)
                 .hasCauseInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void shouldTellWhetherARecipientWasNotifiedOfThatTypeAboutTheSubject() {
+        UUID appointmentId = UUID.fromString("55555555-5555-4555-8555-555555555555");
+        when(repository.existsByRecipientUserIdAndTypeAndSubjectId(
+                USER_ID, NotificationType.APPOINTMENT_CANCELLED, appointmentId)).thenReturn(true);
+
+        assertThat(adapter.existsByRecipientTypeAndSubject(
+                USER_ID, NotificationType.APPOINTMENT_CANCELLED, appointmentId)).isTrue();
+    }
+
+    @Test
+    void shouldWrapDataAccessFailuresWhenLookingForASubject() {
+        UUID appointmentId = UUID.fromString("55555555-5555-4555-8555-555555555555");
+        when(repository.existsByRecipientUserIdAndTypeAndSubjectId(
+                USER_ID, NotificationType.APPOINTMENT_CANCELLED, appointmentId))
+                .thenThrow(new QueryTimeoutException("timeout"));
+
+        assertThatThrownBy(() -> adapter.existsByRecipientTypeAndSubject(
+                USER_ID, NotificationType.APPOINTMENT_CANCELLED, appointmentId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasCauseInstanceOf(QueryTimeoutException.class);
     }
 }

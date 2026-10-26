@@ -7,8 +7,8 @@ import java.util.UUID;
 
 /**
  * ADR-011 envelope of AppointmentCreated, AppointmentRescheduled and AppointmentCancelled
- * (appointment-scheduling). Unknown fields are ignored, so appointment-scheduling can add
- * one without breaking this consumer.
+ * (appointment-scheduling) and AppointmentReminderDue (worker). Unknown fields are ignored,
+ * so a producer can add one without breaking this consumer.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AppointmentEventMessage(
@@ -20,7 +20,7 @@ record AppointmentEventMessage(
 ) {
 
     /**
-     * @param startDateTime         created and cancelled
+     * @param startDateTime         created, cancelled and reminder due
      * @param previousStartDateTime rescheduled
      * @param newStartDateTime      rescheduled
      */

@@ -25,9 +25,9 @@ import java.time.Clock;
 import java.util.List;
 
 /**
- * HU-17: consumes the appointment changes from appointment-scheduling (exchange
- * appointments.events, ADR-011). Notifications owns one queue for the three of
- * them and the dead-letter queue behind it.
+ * HU-17: consumes the appointment changes from appointment-scheduling, and HU-18 the
+ * reminders the worker publishes, on exchange appointments.events (ADR-011).
+ * Notifications owns one queue for all of them and the dead-letter queue behind it.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "notifications.messaging", name = "enabled", havingValue = "true")
@@ -37,7 +37,8 @@ public class AppointmentMessagingConfiguration {
     static final List<String> ROUTING_KEYS = List.of(
             "appointment-created",
             "appointment-rescheduled",
-            "appointment-cancelled"
+            "appointment-cancelled",
+            "appointment-reminder-due"
     );
     static final String DEAD_LETTER_QUEUE = AppointmentEventsListener.QUEUE + ".dlq";
 

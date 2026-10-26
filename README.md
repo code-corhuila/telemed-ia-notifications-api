@@ -125,6 +125,9 @@ Always the inbox of the access token's user; password recovery is never listed.
   - the patient gets one e-mail (Spanish, Bogota time, no names) at the address identity answers,
     and the same record shows it in the patient's inbox. A patient without an address keeps the
     notice in the inbox; identity or SMTP failures are retried through the broker.
+- Consumes `AppointmentReminderDue` from the worker on the same exchange and queue (routing key
+  `appointment-reminder-due`) as `APPOINTMENT_REMINDER`, delivered like the changes above. A
+  reminder is dropped when the patient was already notified of that appointment's cancellation.
 - The listener runs only with `NOTIFICATIONS_LISTENER_ENABLED=true` (`RABBITMQ_*` variables, see
   `.env.example`); Docker Compose turns it on. The RabbitMQ health indicator is disabled.
 

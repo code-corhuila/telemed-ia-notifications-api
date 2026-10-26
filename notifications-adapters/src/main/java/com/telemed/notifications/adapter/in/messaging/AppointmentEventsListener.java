@@ -14,7 +14,8 @@ import java.io.IOException;
 import java.time.Instant;
 
 /**
- * Consumes the appointment changes from appointment-scheduling (HU-17). A message
+ * Consumes the appointment changes from appointment-scheduling (HU-17) and the reminders
+ * from the worker (HU-18). A message
  * that can never be notified goes to the dead-letter queue; any other failure is
  * rethrown so the broker retries it.
  */
@@ -81,6 +82,10 @@ public class AppointmentEventsListener {
             }
             case "AppointmentCancelled" -> {
                 change = NotificationType.APPOINTMENT_CANCELLED;
+                startsAt = payload.startDateTime();
+            }
+            case "AppointmentReminderDue" -> {
+                change = NotificationType.APPOINTMENT_REMINDER;
                 startsAt = payload.startDateTime();
             }
             default -> throw reject("Unsupported event type.");

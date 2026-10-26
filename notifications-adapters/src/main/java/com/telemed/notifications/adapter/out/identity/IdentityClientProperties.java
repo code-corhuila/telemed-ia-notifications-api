@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 
 /**
- * @param baseUrl      identity-and-access-api inside the platform network
+ * @param baseUrl      identity (identity-api) inside the platform network
  * @param clientId     notifications' service client in identity's SERVICE_CLIENTS
  * @param clientSecret its secret; identity only keeps the bcrypt hash
  * @param timeout      connect and read timeout of every call to identity

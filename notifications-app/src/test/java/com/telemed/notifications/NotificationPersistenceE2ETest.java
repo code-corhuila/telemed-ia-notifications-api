@@ -124,6 +124,26 @@ class NotificationPersistenceE2ETest {
     }
 
     @Test
+    void shouldFindTheCancellationOfAnAppointmentForItsPatient() {
+        UUID patient = UUID.randomUUID();
+        UUID cancelled = UUID.randomUUID();
+        UUID confirmed = UUID.randomUUID();
+        Instant startsAt = Instant.parse("2026-11-03T14:00:00Z");
+
+        notifications.save(Notification.pending(patient, NotificationType.APPOINTMENT_CANCELLED,
+                UUID.randomUUID(), null, new InboxNotification.Subject(SubjectType.APPOINTMENT, cancelled, startsAt)));
+        notifications.save(Notification.pending(patient, NotificationType.APPOINTMENT_CONFIRMED,
+                UUID.randomUUID(), null, new InboxNotification.Subject(SubjectType.APPOINTMENT, confirmed, startsAt)));
+
+        assertThat(notifications.existsByRecipientTypeAndSubject(
+                patient, NotificationType.APPOINTMENT_CANCELLED, cancelled)).isTrue();
+        assertThat(notifications.existsByRecipientTypeAndSubject(
+                patient, NotificationType.APPOINTMENT_CANCELLED, confirmed)).isFalse();
+        assertThat(notifications.existsByRecipientTypeAndSubject(
+                UUID.randomUUID(), NotificationType.APPOINTMENT_CANCELLED, cancelled)).isFalse();
+    }
+
+    @Test
     void shouldReturnEmptyForUnknownEvent() {
         assertThat(notifications.findBySourceEventIdAndRecipient(UUID.randomUUID(), UUID.randomUUID()))
                 .isEmpty();

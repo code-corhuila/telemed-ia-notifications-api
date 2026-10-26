@@ -21,6 +21,12 @@ public interface SpringDataNotificationRepository
             UUID recipientUserId
     );
 
+    boolean existsByRecipientUserIdAndTypeAndSubjectId(
+            UUID recipientUserId,
+            NotificationType type,
+            UUID subjectId
+    );
+
     @Query("""
             SELECT n FROM NotificationJpaEntity n
             WHERE n.recipientUserId = :recipient

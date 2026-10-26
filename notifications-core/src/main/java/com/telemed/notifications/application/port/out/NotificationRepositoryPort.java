@@ -1,6 +1,7 @@
 package com.telemed.notifications.application.port.out;
 
 import com.telemed.notifications.domain.model.Notification;
+import com.telemed.notifications.domain.model.NotificationType;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -15,5 +16,12 @@ public interface NotificationRepositoryPort {
 
     Notification save(
             Notification notification
+    );
+
+    /** Whether the recipient was already notified of this type about that subject. */
+    boolean existsByRecipientTypeAndSubject(
+            UUID recipientUserId,
+            NotificationType type,
+            UUID subjectId
     );
 }

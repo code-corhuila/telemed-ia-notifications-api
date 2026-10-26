@@ -27,7 +27,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/** HU-17: the appointment events, as appointment-scheduling publishes them in the ADR-011 envelope. */
+/**
+ * HU-17: the appointment events, as appointment-scheduling publishes them in the ADR-011 envelope.
+ * HU-18: the reminder the worker publishes in the same envelope.
+ */
 class AppointmentEventsListenerTest {
 
     private static final UUID EVENT_ID = UUID.fromString("33333333-3333-4333-8333-333333333333");
@@ -79,6 +82,19 @@ class AppointmentEventsListenerTest {
     }
 
     @Test
+    void shouldNotifyAReminderDueWithTheStartOfTheAppointment() {
+
+        // HU-18: published by the worker on the same exchange.
+        listener.onMessage(message(envelope("AppointmentReminderDue", 1, "trace-worker", """
+                "appointmentId": "%s", "patientId": "%s", "professionalId": "%s",
+                "startDateTime": "2026-11-03T14:00:00Z", "reminderOffset": "PT24H"
+                """.formatted(APPOINTMENT_ID, PATIENT_ID, PROFESSIONAL_ID))));
+
+        verify(notifyAppointmentChange).notify(command(NotificationType.APPOINTMENT_REMINDER,
+                "trace-worker", Instant.parse("2026-11-03T14:00:00Z"), null));
+    }
+
+    @Test
     void shouldTraceWithTheCorrelationIdOfTheEventAndKeepNoEmptyOne() {
 
         AtomicReference<String> trace = new AtomicReference<>();
@@ -116,6 +132,9 @@ class AppointmentEventsListenerTest {
                 """.formatted(APPOINTMENT_ID, PATIENT_ID, PROFESSIONAL_ID)));
         assertRejected(envelope("AppointmentRescheduled", 1, "trace-appt", """
                 "appointmentId": "%s", "patientId": "%s", "professionalId": "%s", "newStartDateTime": "2026-11-03T14:00:00Z"
+                """.formatted(APPOINTMENT_ID, PATIENT_ID, PROFESSIONAL_ID)));
+        assertRejected(envelope("AppointmentReminderDue", 1, "trace-worker", """
+                "appointmentId": "%s", "patientId": "%s", "professionalId": "%s", "reminderOffset": "PT24H"
                 """.formatted(APPOINTMENT_ID, PATIENT_ID, PROFESSIONAL_ID)));
 
         verify(notifyAppointmentChange, never()).notify(any());

@@ -11,14 +11,16 @@ import com.telemed.notifications.domain.model.InAppNotification;
 import com.telemed.notifications.domain.model.InboxNotification;
 import com.telemed.notifications.domain.model.Notification;
 import com.telemed.notifications.domain.model.NotificationStatus;
+import com.telemed.notifications.domain.model.NotificationType;
 import com.telemed.notifications.domain.model.SubjectType;
 
 import java.time.Clock;
 import java.util.Optional;
 
 /**
- * HU-17: the professional sees the change only in the inbox. The patient is e-mailed, and the
- * same delivery record, which carries the appointment, shows it in the patient's inbox.
+ * HU-17 changes and HU-18 reminders: the professional sees them only in the inbox. The patient is
+ * e-mailed, and the same delivery record, which carries the appointment, shows it in the
+ * patient's inbox.
  */
 public class NotifyAppointmentChangeService implements NotifyAppointmentChangeUseCase {
 
@@ -51,6 +53,10 @@ public class NotifyAppointmentChangeService implements NotifyAppointmentChangeUs
     public void notify(
             NotifyAppointmentChangeCommand command
     ) {
+        if (isReminderOfCancelledAppointment(command)) {
+            return;
+        }
+
         InboxNotification.Subject appointment = new InboxNotification.Subject(
                 SubjectType.APPOINTMENT, command.appointmentId(), command.startsAt());
 
@@ -104,6 +110,15 @@ public class NotifyAppointmentChangeService implements NotifyAppointmentChangeUs
         }
 
         notifications.save(notification.sent(clock.instant()));
+    }
+
+    // The worker picks confirmed appointments; this catches a cancellation it has not seen yet.
+    private boolean isReminderOfCancelledAppointment(
+            NotifyAppointmentChangeCommand command
+    ) {
+        return command.change() == NotificationType.APPOINTMENT_REMINDER
+                && notifications.existsByRecipientTypeAndSubject(
+                        command.patientId(), NotificationType.APPOINTMENT_CANCELLED, command.appointmentId());
     }
 
     private static boolean hasNoEmailToSendTo(Notification notification) {

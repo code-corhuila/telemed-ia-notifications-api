@@ -39,8 +39,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * HU-17: an appointment was confirmed, rescheduled or cancelled. The professional sees it in the
- * inbox only; the patient gets an e-mail, and the same record shows it in the patient's inbox.
+ * HU-17: an appointment was confirmed, rescheduled or cancelled. HU-18: an appointment is coming
+ * up. The professional sees it in the inbox only; the patient gets an e-mail, and the same record
+ * shows it in the patient's inbox.
  */
 @ExtendWith(MockitoExtension.class)
 class NotifyAppointmentChangeServiceTest {
@@ -209,10 +210,57 @@ class NotifyAppointmentChangeServiceTest {
     }
 
     @Test
-    void shouldAcceptOnlyAppointmentChangesWithTheirData() {
+    void shouldRemindThePatientByEmailAndTheProfessionalInTheInbox() {
+        when(notifications.existsByRecipientTypeAndSubject(
+                PATIENT_ID, NotificationType.APPOINTMENT_CANCELLED, APPOINTMENT_ID)).thenReturn(false);
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, PATIENT_ID)).thenReturn(Optional.empty());
+        when(contacts.findEmail(PATIENT_ID)).thenReturn(Optional.of(EMAIL));
+
+        service.notify(command(NotificationType.APPOINTMENT_REMINDER, null));
+
+        verify(inbox).record(new InAppNotification(
+                PROFESSIONAL_ID, NotificationType.APPOINTMENT_REMINDER, APPOINTMENT, EVENT_ID, "trace-1", NOW));
+        verify(contacts, never()).findEmail(PROFESSIONAL_ID);
+        verify(sender).send(EMAIL, NotificationType.APPOINTMENT_REMINDER, STARTS_AT, null);
+        assertThat(savedRecords(2).get(1)).satisfies(sent -> {
+            assertThat(sent.status()).isEqualTo(NotificationStatus.SENT);
+            assertThat(sent.recipientUserId()).isEqualTo(PATIENT_ID);
+            assertThat(sent.type()).isEqualTo(NotificationType.APPOINTMENT_REMINDER);
+            assertThat(sent.subject()).isEqualTo(APPOINTMENT);
+        });
+    }
+
+    @Test
+    void shouldNotRemindOfAnAppointmentWhoseCancellationWasAlreadyNotified() {
+        // HU-18: the worker picks confirmed appointments; a cancellation it missed is caught here.
+        when(notifications.existsByRecipientTypeAndSubject(
+                PATIENT_ID, NotificationType.APPOINTMENT_CANCELLED, APPOINTMENT_ID)).thenReturn(true);
+
+        service.notify(command(NotificationType.APPOINTMENT_REMINDER, null));
+
+        verify(inbox, never()).record(any());
+        verify(contacts, never()).findEmail(any());
+        verify(sender, never()).send(anyString(), any(), any(), any());
+        verify(notifications, never()).save(any());
+    }
+
+    @Test
+    void shouldLookForACancellationOnlyBeforeAReminder() {
+        when(notifications.findBySourceEventIdAndRecipient(EVENT_ID, PATIENT_ID)).thenReturn(Optional.empty());
+        when(contacts.findEmail(PATIENT_ID)).thenReturn(Optional.of(EMAIL));
+
+        service.notify(confirmed());
+
+        verify(notifications, never()).existsByRecipientTypeAndSubject(any(), any(), any());
+    }
+
+    @Test
+    void shouldAcceptOnlyAppointmentChangesAndRemindersWithTheirData() {
+        assertThat(command(NotificationType.APPOINTMENT_REMINDER, null).change())
+                .isEqualTo(NotificationType.APPOINTMENT_REMINDER);
         assertThatThrownBy(() -> command(NotificationType.DOCUMENT_READY, null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> command(NotificationType.APPOINTMENT_REMINDER, null))
+        assertThatThrownBy(() -> command(NotificationType.PASSWORD_RECOVERY, null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> command(NotificationType.APPOINTMENT_RESCHEDULED, null))
                 .isInstanceOf(IllegalArgumentException.class);

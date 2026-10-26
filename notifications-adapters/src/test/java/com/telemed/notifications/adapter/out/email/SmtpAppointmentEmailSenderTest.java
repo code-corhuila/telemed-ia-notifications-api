@@ -16,7 +16,10 @@ import java.time.ZoneId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** HU-17: the patient is told of a confirmed, rescheduled or cancelled appointment, in Bogota time. */
+/**
+ * HU-17: the patient is told of a confirmed, rescheduled or cancelled appointment. HU-18: and
+ * reminded of an upcoming one. Times are in Bogota.
+ */
 class SmtpAppointmentEmailSenderTest {
 
     private static final String FROM = "no-reply@telemed.test";
@@ -69,10 +72,25 @@ class SmtpAppointmentEmailSenderTest {
     }
 
     @Test
-    void shouldWriteOnlyAboutAppointmentChanges() {
+    void shouldRemindThePatientOfTheAppointmentTime() throws Exception {
+        sender(GREEN_MAIL.getSmtp().getPort())
+                .send(EMAIL, NotificationType.APPOINTMENT_REMINDER, STARTS_AT, null);
+
+        MimeMessage message = onlyMessage();
+        assertThat(message.getSubject()).isEqualTo("Recordatorio de tu cita en TeleMed IA");
+        assertThat((String) message.getContent())
+                .contains("Te recordamos")
+                .contains("3 de noviembre de 2026 a las 09:00")
+                .contains("Si no puedes asistir");
+    }
+
+    @Test
+    void shouldWriteOnlyAboutAppointments() {
         SmtpAppointmentEmailSender sender = sender(GREEN_MAIL.getSmtp().getPort());
 
         assertThatThrownBy(() -> sender.send(EMAIL, NotificationType.DOCUMENT_READY, STARTS_AT, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> sender.send(EMAIL, NotificationType.PASSWORD_RECOVERY, STARTS_AT, null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(GREEN_MAIL.getReceivedMessages()).isEmpty();
     }

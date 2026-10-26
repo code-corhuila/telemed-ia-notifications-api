@@ -2,6 +2,7 @@ package com.telemed.notifications.adapter.out.persistence;
 
 import com.telemed.notifications.application.port.out.NotificationRepositoryPort;
 import com.telemed.notifications.domain.model.Notification;
+import com.telemed.notifications.domain.model.NotificationType;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
@@ -53,6 +54,23 @@ public class NotificationPersistenceAdapter
         } catch (DataAccessException exception) {
             throw new IllegalStateException(
                     "Notification could not be persisted.",
+                    exception
+            );
+        }
+    }
+
+    @Override
+    public boolean existsByRecipientTypeAndSubject(
+            UUID recipientUserId,
+            NotificationType type,
+            UUID subjectId
+    ) {
+        try {
+            return notifications.existsByRecipientUserIdAndTypeAndSubjectId(recipientUserId, type, subjectId);
+
+        } catch (DataAccessException exception) {
+            throw new IllegalStateException(
+                    "Notification could not be retrieved.",
                     exception
             );
         }

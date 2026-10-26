@@ -8,9 +8,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Data of a consumed AppointmentCreated, AppointmentRescheduled or AppointmentCancelled event.
+ * Data of a consumed AppointmentCreated, AppointmentRescheduled, AppointmentCancelled or
+ * AppointmentReminderDue event.
  *
- * @param change           APPOINTMENT_CONFIRMED, APPOINTMENT_RESCHEDULED or APPOINTMENT_CANCELLED
+ * @param change           APPOINTMENT_CONFIRMED, APPOINTMENT_RESCHEDULED, APPOINTMENT_CANCELLED
+ *                         or APPOINTMENT_REMINDER
  * @param patientId        identity account of the patient (the token's sub)
  * @param professionalId   identity account of the professional (the token's sub)
  * @param startsAt         start of the appointment; the new start when it was rescheduled
@@ -30,7 +32,8 @@ public record NotifyAppointmentChangeCommand(
     private static final Set<NotificationType> CHANGES = EnumSet.of(
             NotificationType.APPOINTMENT_CONFIRMED,
             NotificationType.APPOINTMENT_RESCHEDULED,
-            NotificationType.APPOINTMENT_CANCELLED
+            NotificationType.APPOINTMENT_CANCELLED,
+            NotificationType.APPOINTMENT_REMINDER
     );
 
     public NotifyAppointmentChangeCommand {
@@ -44,7 +47,7 @@ public record NotifyAppointmentChangeCommand(
 
         if (!CHANGES.contains(change)) {
             throw new IllegalArgumentException(
-                    "Only a confirmed, rescheduled or cancelled appointment is a change."
+                    "Only a confirmed, rescheduled, cancelled or upcoming appointment is notified."
             );
         }
 

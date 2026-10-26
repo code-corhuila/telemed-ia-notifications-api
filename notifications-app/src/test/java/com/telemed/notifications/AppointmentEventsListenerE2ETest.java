@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * HU-17: an appointment event from appointments.events ends in the professional's inbox and in
  * one e-mail to the patient, at the address identity answers, also shown in the patient's inbox.
+ * HU-18: so does the worker's reminder, unless the appointment was already cancelled.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -128,6 +129,49 @@ class AppointmentEventsListenerE2ETest {
     }
 
     @Test
+    void shouldRemindThePatientByEmailAndTheProfessionalInTheInbox() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID appointmentId = UUID.randomUUID();
+        UUID patientId = UUID.randomUUID();
+        UUID professionalId = UUID.randomUUID();
+
+        publish(eventId, "appointment-reminder-due", reminderDue(eventId, appointmentId, patientId, professionalId));
+
+        awaitSentRows(eventId, 2);
+        assertThat(row(eventId, professionalId).get("channel")).isEqualTo("IN_APP");
+        assertThat(row(eventId, patientId)).satisfies(patient -> {
+            assertThat(patient.get("channel")).isEqualTo("EMAIL");
+            assertThat(patient.get("type")).isEqualTo("APPOINTMENT_REMINDER");
+            assertThat(patient.get("subject_id")).isEqualTo(appointmentId);
+        });
+
+        MimeMessage[] received = GREEN_MAIL.getReceivedMessages();
+        assertThat(received).hasSize(1);
+        assertThat(received[0].getSubject()).isEqualTo("Recordatorio de tu cita en TeleMed IA");
+    }
+
+    @Test
+    void shouldNotRemindOfAnAppointmentAlreadyCancelled() throws Exception {
+        UUID cancellationId = UUID.randomUUID();
+        UUID reminderId = UUID.randomUUID();
+        UUID appointmentId = UUID.randomUUID();
+        UUID patientId = UUID.randomUUID();
+        UUID professionalId = UUID.randomUUID();
+
+        publish(cancellationId, "appointment-cancelled",
+                cancelled(cancellationId, appointmentId, patientId, professionalId));
+        awaitSentRows(cancellationId, 2);
+
+        publish(reminderId, "appointment-reminder-due", reminderDue(reminderId, appointmentId, patientId, professionalId));
+        // Nothing to wait for: give the reminder time to (not) be notified.
+        Thread.sleep(1_500);
+
+        assertThat(rows(reminderId)).isZero();
+        assertThat(GREEN_MAIL.getReceivedMessages()).hasSize(1);
+        assertThat(rabbit.receive(DEAD_LETTER_QUEUE, 500)).isNull();
+    }
+
+    @Test
     void shouldDeadLetterAMessageThatCanNeverBeNotified() {
         UUID eventId = UUID.randomUUID();
 
@@ -191,6 +235,28 @@ class AppointmentEventsListenerE2ETest {
                   }
                 }
                 """.formatted(eventId, Instant.now(), appointmentId, patientId, professionalId);
+    }
+
+    private static String cancelled(UUID eventId, UUID appointmentId, UUID patientId, UUID professionalId) {
+        return event(eventId, "AppointmentCancelled", """
+                "appointmentId": "%s", "patientId": "%s", "professionalId": "%s",
+                "startDateTime": "2026-11-03T14:00:00Z", "cancelledBy": "%s", "cancelledAt": "%s"
+                """.formatted(appointmentId, patientId, professionalId, patientId, Instant.now()));
+    }
+
+    /** As the worker publishes it (HU-18). */
+    private static String reminderDue(UUID eventId, UUID appointmentId, UUID patientId, UUID professionalId) {
+        return event(eventId, "AppointmentReminderDue", """
+                "appointmentId": "%s", "patientId": "%s", "professionalId": "%s",
+                "startDateTime": "2026-11-03T14:00:00Z", "reminderOffset": "PT24H"
+                """.formatted(appointmentId, patientId, professionalId));
+    }
+
+    private static String event(UUID eventId, String eventType, String payload) {
+        return """
+                {"eventId": "%s", "eventType": "%s", "occurredAt": "%s",
+                 "correlationId": "e2e-appointment-trace", "version": 1, "payload": {%s}}
+                """.formatted(eventId, eventType, Instant.now(), payload);
     }
 
     /** Plays identity: a service token, and the e-mail of whichever patient is asked for. */

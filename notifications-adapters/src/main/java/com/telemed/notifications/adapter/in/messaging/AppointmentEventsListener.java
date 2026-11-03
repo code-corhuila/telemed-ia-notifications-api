@@ -1,11 +1,9 @@
 package com.telemed.notifications.adapter.in.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.telemed.notifications.adapter.in.http.CorrelationContext;
 import com.telemed.notifications.application.port.in.NotifyAppointmentChangeCommand;
 import com.telemed.notifications.application.port.in.NotifyAppointmentChangeUseCase;
 import com.telemed.notifications.domain.model.NotificationType;
-import org.slf4j.MDC;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -39,14 +37,11 @@ public class AppointmentEventsListener {
     @RabbitListener(queues = QUEUE)
     public void onMessage(Message message) {
 
-        NotifyAppointmentChangeCommand command = toCommand(message);
-
-        MDC.put(CorrelationContext.MDC_KEY, command.correlationId());
-        try {
+        MessageTrace.consume(QUEUE, message, () -> {
+            NotifyAppointmentChangeCommand command = toCommand(message);
+            MessageTrace.correlate(command.correlationId());
             notifyAppointmentChange.notify(command);
-        } finally {
-            MDC.remove(CorrelationContext.MDC_KEY);
-        }
+        });
     }
 
     private NotifyAppointmentChangeCommand toCommand(Message message) {

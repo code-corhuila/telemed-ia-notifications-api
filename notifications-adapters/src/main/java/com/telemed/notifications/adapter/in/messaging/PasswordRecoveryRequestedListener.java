@@ -1,10 +1,8 @@
 package com.telemed.notifications.adapter.in.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.telemed.notifications.adapter.in.http.CorrelationContext;
 import com.telemed.notifications.application.port.in.DeliverPasswordRecoveryEmailCommand;
 import com.telemed.notifications.application.port.in.DeliverPasswordRecoveryEmailUseCase;
-import org.slf4j.MDC;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -37,14 +35,11 @@ public class PasswordRecoveryRequestedListener {
     @RabbitListener(queues = QUEUE)
     public void onMessage(Message message) {
 
-        DeliverPasswordRecoveryEmailCommand command = toCommand(message);
-
-        MDC.put(CorrelationContext.MDC_KEY, command.correlationId());
-        try {
+        MessageTrace.consume(QUEUE, message, () -> {
+            DeliverPasswordRecoveryEmailCommand command = toCommand(message);
+            MessageTrace.correlate(command.correlationId());
             deliverPasswordRecoveryEmail.deliver(command);
-        } finally {
-            MDC.remove(CorrelationContext.MDC_KEY);
-        }
+        });
     }
 
     // Rejections carry no cause: parser and validation messages may quote the reset link.

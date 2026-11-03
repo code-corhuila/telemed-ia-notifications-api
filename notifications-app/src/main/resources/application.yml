@@ -47,6 +47,8 @@ spring:
     connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:5s}
     listener:
       simple:
+        # Week 11 traces: each consumed message gets a span under the publisher's traceparent.
+        observation-enabled: true
         acknowledge-mode: auto
         default-requeue-rejected: false
         prefetch: ${RABBITMQ_PREFETCH:10}
@@ -107,6 +109,14 @@ management:
     health:
       probes:
         enabled: true
+  # Week 11 traces: every request and message is sampled and sent to the platform collector,
+  # which feeds Jaeger.
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://otel-collector:4318/v1/traces}
   health:
     # An SMTP outage must not take the service out of rotation: failed
     # deliveries are recorded and retried through broker redelivery.

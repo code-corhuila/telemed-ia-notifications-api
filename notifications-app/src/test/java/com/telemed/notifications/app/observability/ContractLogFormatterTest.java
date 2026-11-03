@@ -7,7 +7,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.slf4j.event.KeyValuePair;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.io.ClassPathResource;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +21,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ContractLogFormatterTest {
 
     private final ContractLogFormatter formatter = new ContractLogFormatter("0.1.0", "dev");
+
+    @Test
+    void theProdProfileDeploysWithTheContractFormatToo() throws IOException {
+        // deploy/compose.yml runs the prod profile: its settings take precedence over application.yml.
+        StandardEnvironment environment = new StandardEnvironment();
+        YamlPropertySourceLoader yaml = new YamlPropertySourceLoader();
+        yaml.load("prod", new ClassPathResource("application-prod.yml"))
+                .forEach(source -> environment.getPropertySources().addLast(source));
+        yaml.load("default", new ClassPathResource("application.yml"))
+                .forEach(source -> environment.getPropertySources().addLast(source));
+
+        assertThat(environment.getProperty("logging.structured.format.console"))
+                .isEqualTo(ContractLogFormatter.class.getName());
+    }
 
     @Test
     void writesEveryMandatoryFieldOfTheContract() throws Exception {

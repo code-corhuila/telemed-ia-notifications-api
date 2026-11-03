@@ -78,6 +78,12 @@ notifications:
     client-secret: ${IDENTITY_CLIENT_SECRET:}
     timeout: ${IDENTITY_TIMEOUT:3s}
 
+# Week 11 log contract (CP2): one JSON line per event, with the request or message trace context.
+logging:
+  structured:
+    format:
+      console: com.telemed.notifications.app.observability.ContractLogFormatter
+
 server:
   port: ${PORT:8082}
   shutdown: graceful

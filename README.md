@@ -70,7 +70,8 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
   returned in the response and logged as `traceId`.
 - Errors use the common envelope `{error, message, details, traceId}`; driver messages and
   stack traces are never exposed.
-- The `prod` profile writes JSON logs (ECS format).
+- Every profile writes JSON logs in the week 11 log contract format (`ContractLogFormatter`), with
+  `trace_id`, `span_id` and `correlation_id`.
 
 ## Authentication
 

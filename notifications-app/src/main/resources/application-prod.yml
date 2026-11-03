@@ -21,11 +21,8 @@ notifications:
   mail:
     from: ${MAIL_FROM}
 
+# Logs: the week 11 contract format of application.yml (ContractLogFormatter), as in every profile.
 logging:
-  structured:
-    format:
-      # JSON logs with the traceId from the MDC (NORMA 5.3).
-      console: ecs
   level:
     root: INFO
     com.telemed.notifications: INFO

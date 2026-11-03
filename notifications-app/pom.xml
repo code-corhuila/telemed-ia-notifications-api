@@ -72,6 +72,13 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- Week 11 traces in tests: the exported spans, kept in memory. -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>com.icegreen</groupId>
       <artifactId>greenmail-junit5</artifactId>

@@ -24,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "spring.profiles.active=dev",
-                "management.server.port=0"
+                "management.server.port=0",
+                // Tracing is on here too: keep the spans off the platform collector, absent in tests.
+                "management.otlp.tracing.export.enabled=false"
         }
 )
 class MetricsEndpointE2ETest {

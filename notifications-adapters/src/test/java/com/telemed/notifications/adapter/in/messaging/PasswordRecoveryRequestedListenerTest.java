@@ -15,6 +15,8 @@ import org.springframework.amqp.core.MessageProperties;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,6 +77,24 @@ class PasswordRecoveryRequestedListenerTest {
 
         assertThat(traceDuringDelivery.get()).isEqualTo("trace-123");
         assertThat(MDC.get(CorrelationContext.MDC_KEY)).isNull();
+    }
+
+    @Test
+    void shouldContinueTheTraceOfTheRequestThatAskedForTheEmail() {
+
+        Map<String, String> traceDuringDelivery = new HashMap<>();
+        doAnswer(invocation -> {
+            traceDuringDelivery.putAll(MDC.getCopyOfContextMap());
+            return null;
+        }).when(deliver).deliver(any());
+        Message message = message(envelope("PasswordRecoveryRequested", 1, RESET_URL));
+        message.getMessageProperties().setHeader("traceparent",
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+
+        listener.onMessage(message);
+
+        assertThat(traceDuringDelivery).containsEntry("trace_id", "4bf92f3577b34da6a3ce929d0e0e4736")
+                .containsEntry("correlation_id", "trace-123");
     }
 
     @Test

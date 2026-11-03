@@ -44,7 +44,7 @@ docker compose --env-file .env -f deploy/compose.yml up -d --build
 
 | Port | Use |
 |---|---|
-| 8082 | API |
+| 8082 | API, only inside the `platform` network (the gateway reaches it as `notifications-api:8082`) |
 | 9082 | Management (`/actuator/health`), bound to `127.0.0.1` in Compose |
 
 ## Verification

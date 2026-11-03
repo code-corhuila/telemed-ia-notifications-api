@@ -4,8 +4,11 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
 
+    # Only the gateway is published (Anexo G 5.6.1): the API is reachable only inside the
+    # platform network, as identity-api and intelligent-agent-api are.
+    expose:
+      - "8082"
     ports:
-      - "${PORT:-8082}:8082"
       - "127.0.0.1:${MANAGEMENT_PORT:-9082}:9082"
 
     environment:

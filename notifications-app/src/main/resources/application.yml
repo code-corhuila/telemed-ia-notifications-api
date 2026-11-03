@@ -98,7 +98,8 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # Week 11: the platform Prometheus scrapes notifications-api:9082 on the platform network.
+        include: health,info,prometheus
   endpoint:
     health:
       probes:

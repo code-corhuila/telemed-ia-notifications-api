@@ -15,6 +15,8 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       PORT: 8082
       MANAGEMENT_PORT: 9082
+      # infra-postgres otel-collector on the platform network; it forwards the spans to Jaeger.
+      OTLP_TRACING_ENDPOINT: ${OTLP_TRACING_ENDPOINT:-http://otel-collector:4318/v1/traces}
 
       # Shared instance from telemed-ia-infra-postgres, reached over the
       # platform network, with the domain's own user.

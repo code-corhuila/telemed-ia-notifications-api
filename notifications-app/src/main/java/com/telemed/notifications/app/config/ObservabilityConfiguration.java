@@ -11,12 +11,13 @@ import org.springframework.core.Ordered;
 @Configuration(proxyBeanMethods = false)
 public class ObservabilityConfiguration {
 
-    // After the trace context and before authentication, so rejected requests (401, 403) are counted too.
+    // Inside the request observation (+1), after the trace context (+2) and before authentication,
+    // so rejected requests (401, 403) are counted too.
     @Bean
     FilterRegistrationBean<NotificationsRequestMetricsFilter> notificationsRequestMetrics(MeterRegistry registry) {
         FilterRegistrationBean<NotificationsRequestMetricsFilter> registration =
                 new FilterRegistrationBean<>(new NotificationsRequestMetricsFilter(registry));
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 3);
         return registration;
     }
 }

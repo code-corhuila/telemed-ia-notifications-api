@@ -35,7 +35,7 @@ public class AuthenticationConfiguration {
         registration.addUrlPatterns("/api/v1/*");
         // After CorrelationIdFilter, TraceContextFilter and the request metrics, so a rejected
         // request is logged with its trace and counted.
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 3);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 4);
         return registration;
     }
 }

@@ -5,14 +5,19 @@ import com.telemed.notifications.application.exception.NotificationNotFoundExcep
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLTimeoutException;
+import java.sql.SQLTransientConnectionException;
 import java.util.List;
 
 @RestControllerAdvice
@@ -85,6 +90,10 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+        if (isStoreUnavailable(exception)) {
+            return storeUnavailable(exception, request);
+        }
+
         log.error("Unexpected error while processing request.", exception);
 
         // Never expose driver messages or stack traces to the client.
@@ -95,6 +104,41 @@ public class GlobalExceptionHandler {
                         "An unexpected error occurred.",
                         traceId(request)
                 ));
+    }
+
+    // notifications-db is down or too slow: an expected outage, so a WARN without a stack trace
+    // and a 503 the caller may retry, instead of a 500.
+    private static ResponseEntity<ApiErrorResponse> storeUnavailable(
+            Exception exception,
+            HttpServletRequest request
+    ) {
+        log.atWarn()
+                .addKeyValue("event", "database.unavailable")
+                .addKeyValue("error_code", "SERVICE_UNAVAILABLE")
+                .addKeyValue("error_type", exception.getClass().getName())
+                .log("notifications-db did not answer in time");
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiErrorResponse.of(
+                        "SERVICE_UNAVAILABLE",
+                        "The service is temporarily unavailable. Try again later.",
+                        traceId(request)
+                ));
+    }
+
+    // The persistence adapters wrap Spring's exceptions, so the whole cause chain is checked.
+    private static boolean isStoreUnavailable(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof DataAccessResourceFailureException
+                    || cause instanceof QueryTimeoutException
+                    || cause instanceof CannotCreateTransactionException
+                    || cause instanceof SQLTransientConnectionException
+                    || cause instanceof SQLTimeoutException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ResponseEntity<ApiErrorResponse> validationError(

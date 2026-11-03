@@ -13,6 +13,9 @@ spring:
       validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:3000}
       data-source-properties:
         options: ${DB_STATEMENT_OPTIONS:-c statement_timeout=5000}
+        # Driver waits in seconds: opening a socket, and any read on it (a stalled server).
+        connectTimeout: ${DB_CONNECT_TIMEOUT_S:3}
+        socketTimeout: ${DB_SOCKET_TIMEOUT_S:10}
   # Migrations live in telemed-ia-notifications-db; the API never runs them
   # and only validates the mapped tables.
   liquibase:

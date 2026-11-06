@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "management.otlp.tracing.export.enabled=false"
         }
 )
-class SpanExportTest {
+class SpanExportE2ETest {
 
     private static final String TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
     private static final String CALLER_SPAN = "00f067aa0ba902b7";

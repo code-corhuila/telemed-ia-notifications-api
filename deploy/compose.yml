@@ -36,6 +36,14 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD (the broker user of the platform network)}
 
+      # Identity's access tokens are verified with its public key (path
+      # inside the container).
+      JWT_ISSUER: ${JWT_ISSUER:-telemed-ia-identity-and-access}
+      JWT_PUBLIC_KEY_FILE: /run/secrets/jwt-public.pem
+
+    volumes:
+      - ${JWT_PUBLIC_KEY_HOST_FILE:?Set JWT_PUBLIC_KEY_HOST_FILE (identity's public key)}:/run/secrets/jwt-public.pem:ro
+
     networks:
       - platform
 

@@ -33,8 +33,9 @@ public class AuthenticationConfiguration {
         FilterRegistrationBean<AuthenticationFilter> registration =
                 new FilterRegistrationBean<>(new AuthenticationFilter(verifier, objectMapper));
         registration.addUrlPatterns("/api/v1/*");
-        // Right after CorrelationIdFilter (HIGHEST_PRECEDENCE).
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
+        // After CorrelationIdFilter, TraceContextFilter and the request metrics, so a rejected
+        // request is logged with its trace and counted.
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 4);
         return registration;
     }
 }

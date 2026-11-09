@@ -45,7 +45,12 @@ docker compose --env-file .env -f deploy/compose.yml up -d --build
 | Port | Use |
 |---|---|
 | 8082 | API, only inside the `platform` network (the gateway reaches it as `notifications-api:8082`) |
-| 9082 | Management (`/actuator/health`), bound to `127.0.0.1` in Compose |
+| 9082 | Management (`/actuator/health`, `/actuator/prometheus`), bound to `127.0.0.1` in Compose; the platform Prometheus scrapes `notifications-api:9082` |
+
+Traces: every inbox request span, and each consumed RabbitMQ message as a child of the span that
+published it (for HU-03, identity's outbox publication), goes over OTLP to the platform collector
+(`OTLP_TRACING_ENDPOINT`, default `http://otel-collector:4318/v1/traces`), which forwards it to
+Jaeger. The log lines and the `traceparent` response header carry the same ids.
 
 ## Verification
 
@@ -65,7 +70,8 @@ CI checks out `telemed-ia-notifications-db` at a pinned commit and runs the same
   returned in the response and logged as `traceId`.
 - Errors use the common envelope `{error, message, details, traceId}`; driver messages and
   stack traces are never exposed.
-- The `prod` profile writes JSON logs (ECS format).
+- Every profile writes JSON logs in the week 11 log contract format (`ContractLogFormatter`), with
+  `trace_id`, `span_id` and `correlation_id`.
 
 ## Authentication
 
@@ -153,4 +159,4 @@ branch into another: `merge develop -> qa` and `merge qa -> main` do not exist i
 `main` requires **1 approval from `ariel5253`**. On `develop` and `qa` the team sets its own review
 rule.
 
-Full policy: `00-governance/branching-policy.md` in `library-docs`.
+Full policy: `00-governance/branching-policy.md` in `telemed-ia-docs`.

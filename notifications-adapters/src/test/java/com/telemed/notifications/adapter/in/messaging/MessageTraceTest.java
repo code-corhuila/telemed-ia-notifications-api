@@ -1,6 +1,8 @@
 package com.telemed.notifications.adapter.in.messaging;
 
 import com.telemed.notifications.adapter.CapturedLogs;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
@@ -80,6 +82,32 @@ class MessageTraceTest {
         assertThat(MDC.get("span_id")).isNull();
         assertThat(MDC.get("correlation_id")).isNull();
         assertThat(MDC.get("traceId")).isNull();
+    }
+
+    @Test
+    void countsEveryMessageByQueueAndOutcomeAndTimesIt() {
+        // Spring Boot adds its Prometheus registry to the global one, which MessageTrace records to.
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        Metrics.addRegistry(registry);
+        try {
+            MessageTrace.consume(QUEUE, message(null, null), () -> { });
+            assertThatThrownBy(() -> MessageTrace.consume(QUEUE, message(null, null), () -> {
+                throw new AmqpRejectAndDontRequeueException("Unsupported event type or version.");
+            })).isInstanceOf(AmqpRejectAndDontRequeueException.class);
+            assertThatThrownBy(() -> MessageTrace.consume(QUEUE, message(null, null), () -> {
+                throw new IllegalStateException("SMTP unavailable");
+            })).isInstanceOf(IllegalStateException.class);
+
+            for (String outcome : new String[] {"processed", "rejected", "failed"}) {
+                assertThat(registry.get("notifications.messages.consumed")
+                        .tags("queue", QUEUE, "outcome", outcome).counter().count())
+                        .as(outcome).isEqualTo(1.0);
+            }
+            assertThat(registry.get("notifications.message.duration").tags("queue", QUEUE).timer().count())
+                    .isEqualTo(3);
+        } finally {
+            Metrics.removeRegistry(registry);
+        }
     }
 
     private static Message message(String traceparent, String correlationId) {

@@ -3,6 +3,7 @@ package com.telemed.notifications.adapter.in.http;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.telemed.notifications.adapter.CapturedLogs;
 import com.telemed.notifications.application.exception.NotificationNotFoundException;
 import com.telemed.notifications.application.port.in.InboxPage;
 import com.telemed.notifications.application.port.in.InboxQuery;
@@ -15,6 +16,7 @@ import com.telemed.notifications.domain.model.NotificationType;
 import com.telemed.notifications.domain.model.SubjectType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -23,6 +25,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -169,6 +173,35 @@ class NotificationInboxControllerTest {
         mockMvc.perform(post("/api/v1/notifications").header("Authorization", "Bearer patient-token"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void shouldAnswer503WhenNotificationsDbDoesNotRespond() throws Exception {
+        when(view.countUnread(USER_ID)).thenThrow(
+                new DataAccessResourceFailureException("Unable to acquire JDBC Connection"));
+
+        try (CapturedLogs logs = CapturedLogs.of(GlobalExceptionHandler.class)) {
+            mockMvc.perform(get("/api/v1/notifications/unread-count").header("Authorization", "Bearer patient-token"))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.error").value("SERVICE_UNAVAILABLE"))
+                    .andExpect(jsonPath("$.traceId").isNotEmpty());
+
+            assertThat(logs.events("database.unavailable"))
+                    .extracting(event -> event.get("level"), event -> event.get("error_code"))
+                    .containsExactly(tuple("WARN", "SERVICE_UNAVAILABLE"));
+            // An outage is expected and handled: no stack trace per request.
+            assertThat(logs.everything()).doesNotContain("Unexpected error");
+        }
+    }
+
+    @Test
+    void shouldAnswer503ForAWrappedStoreFailureToo() throws Exception {
+        when(view.countUnread(USER_ID)).thenThrow(new IllegalStateException("Inbox read failed.",
+                new DataAccessResourceFailureException("Connection refused")));
+
+        mockMvc.perform(get("/api/v1/notifications/unread-count").header("Authorization", "Bearer patient-token"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("SERVICE_UNAVAILABLE"));
     }
 
     private void assertInvalid(String url, String field) throws Exception {

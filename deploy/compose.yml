@@ -43,7 +43,7 @@ services:
 
       # HU-17: the patient's e-mail is asked to identity with this service client;
       # identity's SERVICE_CLIENTS keeps only the bcrypt hash of the secret.
-      IDENTITY_BASE_URL: ${IDENTITY_BASE_URL:-http://identity-and-access-api:8081}
+      IDENTITY_BASE_URL: ${IDENTITY_BASE_URL:-http://identity-api:8081}
       IDENTITY_CLIENT_ID: ${IDENTITY_CLIENT_ID:-notifications}
       IDENTITY_CLIENT_SECRET: ${IDENTITY_CLIENT_SECRET:?Set IDENTITY_CLIENT_SECRET (notifications service client in identity)}
 

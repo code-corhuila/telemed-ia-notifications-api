@@ -76,13 +76,24 @@ class NotificationPersistenceE2ETest {
     }
 
     @Test
-    void shouldRejectASecondNotificationForTheSameEvent() {
+    void shouldRejectASecondNotificationOfTheSameEventForTheSameRecipient() {
+        UUID eventId = UUID.randomUUID();
+        UUID recipient = UUID.randomUUID();
+
+        notifications.save(pending(eventId, recipient));
+
+        assertThatThrownBy(() -> notifications.save(pending(eventId, recipient)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldAcceptOneEventForSeveralRecipients() {
         UUID eventId = UUID.randomUUID();
 
-        notifications.save(pending(eventId));
+        // HU-17: one appointment event notifies both the patient and the professional.
+        notifications.save(pending(eventId, UUID.randomUUID()));
 
-        assertThatThrownBy(() -> notifications.save(pending(eventId)))
-                .isInstanceOf(IllegalStateException.class);
+        assertThat(notifications.save(pending(eventId, UUID.randomUUID())).id()).isNotNull();
     }
 
     @Test
@@ -92,10 +103,11 @@ class NotificationPersistenceE2ETest {
     }
 
     private static Notification pending(
-            UUID eventId
+            UUID eventId,
+            UUID recipient
     ) {
         return Notification.pending(
-                UUID.randomUUID(),
+                recipient,
                 NotificationType.PASSWORD_RECOVERY,
                 eventId,
                 null

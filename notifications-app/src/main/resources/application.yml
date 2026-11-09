@@ -70,6 +70,13 @@ notifications:
   mail:
     from: ${MAIL_FROM:no-reply@telemed.local}
     time-zone: ${MAIL_TIME_ZONE:America/Bogota}
+  # HU-17: the patient's e-mail comes from identity, asked with this service
+  # client. The secret is required where the event consumers run.
+  identity:
+    base-url: ${IDENTITY_BASE_URL:http://identity-and-access-api:8081}
+    client-id: ${IDENTITY_CLIENT_ID:notifications}
+    client-secret: ${IDENTITY_CLIENT_SECRET:}
+    timeout: ${IDENTITY_TIMEOUT:3s}
 
 server:
   port: ${PORT:8082}

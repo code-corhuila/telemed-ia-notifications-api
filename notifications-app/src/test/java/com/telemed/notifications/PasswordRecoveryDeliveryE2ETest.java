@@ -80,7 +80,7 @@ class PasswordRecoveryDeliveryE2ETest {
 
         assertThat(GREEN_MAIL.getReceivedMessages()).hasSize(1);
 
-        assertThat(notifications.findBySourceEventId(command.eventId()))
+        assertThat(notifications.findBySourceEventIdAndRecipient(command.eventId(), command.userId()))
                 .get()
                 .satisfies(notification -> {
                     assertThat(notification.status())

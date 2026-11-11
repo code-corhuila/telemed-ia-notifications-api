@@ -58,6 +58,22 @@ services:
     networks:
       - platform
 
+  # DEC-018: local test inbox, only with `--profile mail-test`. Pair it with
+  # `--env-file deploy/mail-test.env` (after .env) so the API sends here instead of the real relay.
+  # SMTP (1025) stays inside the platform network; the web inbox is on localhost only.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    profiles: ["mail-test"]
+    ports:
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD-SHELL", "/mailpit readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - platform
+
 networks:
   platform:
     external: true

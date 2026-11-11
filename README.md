@@ -111,6 +111,16 @@ Always the inbox of the access token's user; password recovery is never listed.
 - The recipient address and the reset link are used only while sending: they are not stored and
   not logged. A failed delivery is recorded as `FAILED` and retried through broker redelivery.
 - The mail health indicator is disabled so an SMTP outage does not mark the service as down.
+- Test mode (DEC-018): the `mailpit` service runs only with the `mail-test` profile, and
+  `deploy/mail-test.env` points `MAIL_*` to it. End-to-end runs that create accounts use test mode,
+  and the API goes back to the real relay when they finish:
+
+  ```bash
+  # test mode: every e-mail lands in http://127.0.0.1:8025
+  docker compose --env-file .env --env-file deploy/mail-test.env -f deploy/compose.yml --profile mail-test up -d
+  # back to the real relay (the mailpit container can stay; nothing sends to it)
+  docker compose --env-file .env -f deploy/compose.yml up -d
+  ```
 
 ## Messaging
 

@@ -1,0 +1,80 @@
+services:
+  notifications-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+
+    # Only the gateway is published (Anexo G 5.6.1): the API is reachable only inside the
+    # platform network, as identity-api and intelligent-agent-api are.
+    expose:
+      - "8082"
+    ports:
+      - "127.0.0.1:${MANAGEMENT_PORT:-9082}:9082"
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8082
+      MANAGEMENT_PORT: 9082
+      # infra-postgres otel-collector on the platform network; it forwards the spans to Jaeger.
+      OTLP_TRACING_ENDPOINT: ${OTLP_TRACING_ENDPOINT:-http://otel-collector:4318/v1/traces}
+
+      # Shared instance from telemed-ia-infra-postgres, reached over the
+      # platform network, with the domain's own user.
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/telemed_ia}
+      DB_USERNAME: ${DB_USERNAME:-notifications_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+
+      # SMTP relay used for patient e-mails.
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM}
+
+      # HU-03: PasswordRecoveryRequested from identity over RabbitMQ,
+      # reached as rabbitmq on the platform network.
+      NOTIFICATIONS_LISTENER_ENABLED: ${NOTIFICATIONS_LISTENER_ENABLED:-true}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD (the broker user of the platform network)}
+
+      # Identity's access tokens are verified with its public key (path
+      # inside the container).
+      JWT_ISSUER: ${JWT_ISSUER:-telemed-ia-identity-and-access}
+      JWT_PUBLIC_KEY_FILE: /run/secrets/jwt-public.pem
+
+      # HU-17: the patient's e-mail is asked to identity with this service client;
+      # identity's SERVICE_CLIENTS keeps only the bcrypt hash of the secret.
+      IDENTITY_BASE_URL: ${IDENTITY_BASE_URL:-http://identity-api:8081}
+      IDENTITY_CLIENT_ID: ${IDENTITY_CLIENT_ID:-notifications}
+      IDENTITY_CLIENT_SECRET: ${IDENTITY_CLIENT_SECRET:?Set IDENTITY_CLIENT_SECRET (notifications service client in identity)}
+
+    volumes:
+      - ${JWT_PUBLIC_KEY_HOST_FILE:?Set JWT_PUBLIC_KEY_HOST_FILE (identity's public key)}:/run/secrets/jwt-public.pem:ro
+
+    networks:
+      - platform
+
+  # DEC-018: local test inbox, only with `--profile mail-test`. Pair it with
+  # `--env-file deploy/mail-test.env` (after .env) so the API sends here instead of the real relay.
+  # SMTP (1025) stays inside the platform network; the web inbox is on localhost only.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    profiles: ["mail-test"]
+    ports:
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD-SHELL", "/mailpit readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - platform
+
+networks:
+  platform:
+    external: true
+    name: platform
